@@ -45,25 +45,23 @@ for row in "${SEGS[@]}"; do
   IFS='|' read -r idx img dur mode mf sf <<< "$row"
   N=$(python3 -c "print(int($dur*$FPS))")
 
-  # ---- text drawfilters (rendered onto the 2x still) ----
+  # ---- text drawfilters (no scrim; outline + shadow for legibility) ----
   DT=""
-  # cinematic lower-third scrim
-  DT+="drawbox=x=0:y=$((CH-1100)):w=${CW}:h=1100:color=black@0.0:t=fill,"
-  DT+="drawbox=x=0:y=$((CH-820)):w=${CW}:h=820:color=black@0.28:t=fill,"
   if [ -n "$mf" ]; then
     DT+="drawtext=fontfile=${FONT_MAIN}:textfile=txt/${mf}:fontcolor=white:fontsize=128:"
-    DT+="x=(w-text_w)/2:y=h-560:shadowcolor=black@0.85:shadowx=5:shadowy=5,"
+    DT+="borderw=4:bordercolor=black@0.55:x=(w-text_w)/2:y=h-560:shadowcolor=black@0.7:shadowx=4:shadowy=4,"
   fi
   if [ -n "$sf" ]; then
-    DT+="drawtext=fontfile=${FONT_SUB}:textfile=txt/${sf}:fontcolor=white@0.92:fontsize=64:"
-    DT+="x=(w-text_w)/2:y=h-355:shadowcolor=black@0.85:shadowx=3:shadowy=3,"
+    DT+="drawtext=fontfile=${FONT_SUB}:textfile=txt/${sf}:fontcolor=white@0.95:fontsize=64:"
+    DT+="borderw=3:bordercolor=black@0.5:x=(w-text_w)/2:y=h-355:shadowcolor=black@0.7:shadowx=3:shadowy=3,"
   fi
   DT="${DT%,}"
+  [ -n "$DT" ] && DT=",${DT}"
 
   # ---- still: full-bleed 9:16 cover crop + grade + text (2x canvas) ----
   ffmpeg -y -loglevel error -i "$img" -filter_complex \
 "[0:v]scale=${CW}:${CH}:force_original_aspect_ratio=increase,crop=${CW}:${CH},\
-eq=contrast=1.06:saturation=1.07:brightness=-0.02,${DT},format=rgb24" \
+eq=contrast=1.06:saturation=1.07:brightness=-0.02${DT},format=rgb24" \
     -frames:v 1 "still/${idx}.png"
 
   # ---- Ken Burns motion ----
