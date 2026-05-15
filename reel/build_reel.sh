@@ -1,7 +1,9 @@
 #!/bin/bash
 set -e
 cd /tmp/work
-FONT=/usr/share/fonts/opentype/ipafont-gothic/ipag.ttf
+FONT_MAIN=/tmp/work/fonts/NotoSerifCJKjp-Bold.otf
+FONT_SUB=/tmp/work/fonts/NotoSerifCJKjp-Regular.otf
+QR=/tmp/work/qr.png
 CW=2160; CH=3840          # 2x canvas for crisp Ken Burns
 OUT_W=1080; OUT_H=1920
 FPS=30
@@ -22,7 +24,7 @@ w t9m  "焼　く"
 w t9s  "炭火の生命線"
 w t10m "旨味を、閉じ込める"
 w t11m "席数限定"
-w t11s "ご予約はプロフィールから"
+w t11s "ご予約はこちらから"
 
 # segment table: idx|image|dur|mode(in/out)|mainfile|subfile
 SEGS=(
@@ -49,12 +51,12 @@ for row in "${SEGS[@]}"; do
   DT+="drawbox=x=0:y=$((CH-1100)):w=${CW}:h=1100:color=black@0.0:t=fill,"
   DT+="drawbox=x=0:y=$((CH-820)):w=${CW}:h=820:color=black@0.28:t=fill,"
   if [ -n "$mf" ]; then
-    DT+="drawtext=fontfile=${FONT}:textfile=txt/${mf}:fontcolor=white:fontsize=132:"
-    DT+="x=(w-text_w)/2:y=h-560:shadowcolor=black@0.8:shadowx=6:shadowy=6,"
+    DT+="drawtext=fontfile=${FONT_MAIN}:textfile=txt/${mf}:fontcolor=white:fontsize=128:"
+    DT+="x=(w-text_w)/2:y=h-560:shadowcolor=black@0.85:shadowx=5:shadowy=5,"
   fi
   if [ -n "$sf" ]; then
-    DT+="drawtext=fontfile=${FONT}:textfile=txt/${sf}:fontcolor=white@0.92:fontsize=66:"
-    DT+="x=(w-text_w)/2:y=h-360:shadowcolor=black@0.8:shadowx=4:shadowy=4,"
+    DT+="drawtext=fontfile=${FONT_SUB}:textfile=txt/${sf}:fontcolor=white@0.92:fontsize=64:"
+    DT+="x=(w-text_w)/2:y=h-355:shadowcolor=black@0.85:shadowx=3:shadowy=3,"
   fi
   DT="${DT%,}"
 
@@ -75,4 +77,16 @@ eq=contrast=1.06:saturation=1.07:brightness=-0.02,${DT},format=rgb24" \
     -c:v libx264 -preset medium -crf 18 -r ${FPS} "seg/${idx}.mp4"
   echo "built seg ${idx} (${dur}s, ${mode})"
 done
+
+# ---- final QR reservation card page (static, full card kept scannable) ----
+QDUR=4.4
+ffmpeg -y -loglevel error -i "$QR" -filter_complex \
+"[0:v]scale=${CW}:${CH}:force_original_aspect_ratio=increase,crop=${CW}:${CH},boxblur=55:2,eq=brightness=-0.20:saturation=1.0[bg];\
+[0:v]scale=${CW}:-1:force_original_aspect_ratio=decrease[card];\
+[bg][card]overlay=(W-w)/2:(H-h)/2,format=rgb24" \
+  -frames:v 1 "still/12.png"
+ffmpeg -y -loglevel error -loop 1 -i "still/12.png" -t "$QDUR" -filter_complex \
+"scale=${OUT_W}:${OUT_H},format=yuv420p" \
+  -c:v libx264 -preset medium -crf 18 -r ${FPS} "seg/12.mp4"
+echo "built seg 12 (QR card, ${QDUR}s, static)"
 echo "ALL SEGMENTS DONE"
