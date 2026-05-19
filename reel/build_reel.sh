@@ -11,8 +11,8 @@ mkdir -p seg txt still
 
 # ---- text files (avoid escaping issues) ----
 w(){ printf '%s' "$2" > "txt/$1"; }
-w t1m  "初夏、限定の一皿"
-w t1s  "― 今しか出会えない旬 ―"
+w t1m  "初夏を味わう"
+w t1s  "ー 今だけの旬を愉しむ ー"
 w t2m  "一本の包丁が、料理を変える"
 w t3m  "飾り包丁"
 w t3s  "イカに、繊細な切り込みを"
@@ -23,8 +23,8 @@ w t7m  "揚げる"
 w t9m  "焼　く"
 w t9s  "炭火の生命線"
 w t10m "旨味を、閉じ込める"
-w t11m "席数限定"
-w t11s "ご予約はこちらから"
+w t11m "ご予約はお早めに"
+w tqr  "ご予約はこちらから▼"
 
 # segment table: idx|image|dur|mode(in/out)|mainfile|subfile
 SEGS=(
@@ -38,7 +38,7 @@ SEGS=(
 "08|cook/cook0064.jpg|2.4|out||"
 "09|cook/cook0094.jpg|3.0|in|t9m|t9s"
 "10|cook/cook0103.jpg|2.8|out|t10m|"
-"11|ashirai/ashirai0012.jpg|3.6|in|t11m|t11s"
+"11|ashirai/ashirai0012.jpg|3.6|in|t11m|"
 )
 
 for row in "${SEGS[@]}"; do
@@ -77,11 +77,17 @@ eq=contrast=1.06:saturation=1.07:brightness=-0.02${DT},format=rgb24" \
 done
 
 # ---- final QR reservation card page (static, full card kept scannable) ----
-QDUR=4.4
+QDUR=4.6
+CARDW=1820
+CARDH=$(python3 -c "print(round($CARDW*1350/1080))")          # QR png is 1080x1350
+TOPBAND=$(python3 -c "print(($CH-$CARDH)//2)")                 # blurred margin above card
 ffmpeg -y -loglevel error -i "$QR" -filter_complex \
-"[0:v]scale=${CW}:${CH}:force_original_aspect_ratio=increase,crop=${CW}:${CH},boxblur=55:2,eq=brightness=-0.20:saturation=1.0[bg];\
-[0:v]scale=${CW}:-1:force_original_aspect_ratio=decrease[card];\
-[bg][card]overlay=(W-w)/2:(H-h)/2,format=rgb24" \
+"[0:v]scale=${CW}:${CH}:force_original_aspect_ratio=increase,crop=${CW}:${CH},boxblur=55:2,eq=brightness=-0.22:saturation=1.0[bg];\
+[0:v]scale=${CARDW}:-1[card];\
+[bg][card]overlay=(W-w)/2:(H-h)/2,\
+drawtext=fontfile=${FONT_MAIN}:textfile=txt/tqr:fontcolor=white:fontsize=82:borderw=4:bordercolor=black@0.55:\
+x=(w-text_w)/2:y=(${TOPBAND}-text_h)/2:shadowcolor=black@0.7:shadowx=4:shadowy=4,\
+format=rgb24" \
   -frames:v 1 "still/12.png"
 ffmpeg -y -loglevel error -loop 1 -i "still/12.png" -t "$QDUR" -filter_complex \
 "scale=${OUT_W}:${OUT_H},format=yuv420p" \
